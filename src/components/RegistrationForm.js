@@ -2,8 +2,10 @@
 
 import {useState} from "react";
 import {registrationFormSchema} from "../utils/FormValidationSchema";
+import {useDb} from "../context/DbContext";
 
 const RegistrationForm = () => {
+    const db = useDb();
     const initialFormState = {
         fullname: "",
         age: "",
@@ -65,10 +67,24 @@ const RegistrationForm = () => {
                 disease: validatedData.disease.trim(),
             };
 
-            setFormValues(initialFormState);
+            // setFormValues(initialFormState);
 
-            console.log("Clean Data to Save:", cleanData);
-            // TODO: Save to pglite
+            try {
+                const res = await db.exec(`
+                INSERT INTO patients (fullname, age, contact, disease, gender)
+                VALUES (
+                    '${cleanData.fullname}',
+                    ${cleanData.age},
+                    '${cleanData.contact}',
+                    '${cleanData.disease}',
+                    '${cleanData.gender}'
+                    )
+                `);
+                // console.log(res);
+                alert("Data saved");
+            } catch (error) {
+                console.log("Error", error);
+            }
         } catch (error) {
             if (error.inner) {
                 const formattedErrors = {};
