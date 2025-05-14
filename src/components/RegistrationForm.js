@@ -1,6 +1,6 @@
 "use client";
 
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import {registrationFormSchema} from "../utils/FormValidationSchema";
 import {useDb} from "../context/DbContext";
 
@@ -17,13 +17,39 @@ const RegistrationForm = () => {
     const [formValues, setFormValues] = useState(initialFormState);
     const [errors, setErrors] = useState({});
 
+    useEffect(() => {
+        const savedFormValues = localStorage.getItem("formValues");
+        if (savedFormValues) {
+            setFormValues(JSON.parse(savedFormValues));
+        }
+
+        const handleStorageChange = (event) => {
+            if (event.key === "formValues") {
+                setFormValues(JSON.parse(event.newValue));
+            }
+        };
+
+        window.addEventListener("storage", handleStorageChange);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+        };
+    }, []);
+
     const handleChange = async (e) => {
         const {name, value} = e.target;
 
-        setFormValues((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormValues((prev) => {
+            const updatedFormValues = {
+                ...prev,
+                [name]: value,
+            };
+
+            // Persist updated form values to localStorage
+            localStorage.setItem("formValues", JSON.stringify(updatedFormValues));
+
+            return updatedFormValues;
+        });
 
         // Skip validation if field is empty
         if (value === "") {
@@ -67,20 +93,23 @@ const RegistrationForm = () => {
                 disease: validatedData.disease.trim(),
             };
 
-            // setFormValues(initialFormState);
+            // Clear localStorage after submission
+            localStorage.removeItem("formValues");
 
             try {
                 const res = await db.exec(`
-                INSERT INTO patients (fullname, age, contact, disease, gender)
-                VALUES (
-                    '${cleanData.fullname}',
-                    ${cleanData.age},
-                    '${cleanData.contact}',
-                    '${cleanData.disease}',
-                    '${cleanData.gender}'
-                    )
+                    INSERT INTO patients (fullname, age, contact, disease, gender)
+                    VALUES (
+                        '${cleanData.fullname}',
+                        ${cleanData.age},
+                        '${cleanData.contact}',
+                        '${cleanData.disease}',
+                        '${cleanData.gender}'
+                        )
                 `);
-                // console.log(res);
+
+                if (res) setFormValues(initialFormState);
+
                 alert("Data saved");
             } catch (error) {
                 console.log("Error", error);
